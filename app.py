@@ -22,7 +22,7 @@ def clean_data(data):
 async def fetch_page_data(page, page_number):
     url = f"{URL}/oferty/offer-type/1/body/station-wagon/brand/toyota/model/corolla/power-from/150/additional/hybrid?strona={page_number}&na-strone={CAR_ELEMENTS_COUNT}"
     await page.goto(url)
-    total_elements = await page.inner_text('//*[@id="offers-list"]/div[1]/div[1]/strong')
+    total_elements = int(await page.inner_text('//*[@id="offers-list"]/div[1]/div[1]/strong'))
 
     cars = []
     for i in range(1, CAR_ELEMENTS_COUNT + 1):
@@ -38,7 +38,7 @@ async def fetch_page_data(page, page_number):
         except Exception as e:
             print(f"Error processing car {i}: {e}")
 
-    return int(total_elements.replace(' ', '')), cars
+    return int(total_elements), cars
 
 
 def send_telegram_message(message):
@@ -60,10 +60,11 @@ async def main():
 
         total_elements, first_page_cars = await fetch_page_data(page, 1)
         total_pages = math.ceil(total_elements / CAR_ELEMENTS_COUNT)
-
+        print(f"Total pages to fetch: {total_pages}")
         all_cars = first_page_cars
         for page_number in range(2, total_pages + 1):
-            cars = await fetch_page_data(page, page_number)
+            _, cars = await fetch_page_data(page, page_number)
+            print(f"Fetched {len(cars)} cars from page {page_number}")
             all_cars.extend(cars)
 
         await browser.close()
@@ -71,10 +72,16 @@ async def main():
     new_cars = [car for car in all_cars if car not in previous_data]
 
     if new_cars:
+        print(f"Total number of cars: {total_elements}")
         print("New cars found:")
         for car in new_cars:
             print(car)
-            send_telegram_message(f"New car found: {car}")
+            send_telegram_message(message = f"New Toyota Corolla 2019+:"
+                                            f"\nDescription: {car['name']}"
+                                            f"\nPrice: {car['price']}"
+                                            f"\nYear: {car['production_year']}"
+                                            f"\nMileage: {car['millage']}"
+                                            f"\nLink: {car['link']}")
 
     with open(DATA_FILE, 'w') as f:
         json.dump(all_cars, f)
