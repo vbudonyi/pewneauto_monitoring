@@ -1,0 +1,9 @@
+version: '3'
+
+services:
+  pewneauto_monitoring:
+    build: .
+    image: pewneauto_monitoring
+    restart: always
+    volumes:
+      - /usr/src/app/data.json:/root/data/data.json
